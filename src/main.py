@@ -1,9 +1,9 @@
 import os
 import config
 from Preprocessing import Preprocessing
+from Words__frequencies import Words_frequencies
 from Syntagmatic_relation_conditional_entropy import Syntagmatic_relation_conditional_entropy
-import pandas as pd
-
+from Syntagmatic_relation_mutual_information import Syntagmatic_relation_mutual_information
 
 if __name__ == "__main__":
 
@@ -18,8 +18,8 @@ if __name__ == "__main__":
     vocabulary_file = config.vocabulary_file
     lemmatized_sentences_file = config.lemmatized_sentences_file
 
-    tdm_file = config.tdm_file
-    tdm_normalized_file = config.tdm_normalized_file
+    syntagmatic_relations_conditional_entropy_file = config.syntagmatic_relations_conditional_entropy_file
+    syntagmatic_relations_mutual_information_file = config.syntagmatic_relations_mutual_information_file
 
     # Preprocess
 
@@ -50,7 +50,63 @@ if __name__ == "__main__":
         f.close()    
 
 
+    target_word = "organización"
+
+    # Obtain relative frequencies of words
+
+    individual_words_probabilities = Words_frequencies.compute_relative_frequencies(lemmatized_sentences, vocabulary)
+    target_word_probabilities_with_others = Words_frequencies.compute_relative_frequencies_in_pairs(target_word, lemmatized_sentences, vocabulary)
+
+
     # Syntagmatic relation through conditional entropy
 
-    sr_ce_organizacion_object = Syntagmatic_relation_conditional_entropy()
-    sr_ce_organizacion = sr_ce_organizacion_object.word_syntagmatic_relations
+    if (os.path.exists(processed_files_path + syntagmatic_relations_conditional_entropy_file)):
+
+        f = open(processed_files_path + syntagmatic_relations_conditional_entropy_file, "r")
+        entropies_list = [word.replace("\n","") for word in f.readlines()]
+        f.close()
+
+
+    else:
+
+        sr_ce_target_word_object = Syntagmatic_relation_conditional_entropy(target_word, individual_words_probabilities, target_word_probabilities_with_others, vocabulary)
+        sr_ce_target_word = sr_ce_target_word_object.word_syntagmatic_relations
+
+        entropies_list = []
+
+        for word in sr_ce_target_word.keys():
+
+            entropies_list.append([word, sr_ce_target_word[word]])
+
+        entropies_list.sort(key=lambda x: x[1])
+
+        f = open(processed_files_path + syntagmatic_relations_conditional_entropy_file, "w")    
+        f.writelines([f'H({target_word}|{word}) = {entropy}\n' for word, entropy in entropies_list])
+        f.close()
+
+    
+    # Syntagmatic relation through mutual information
+
+    if (os.path.exists(processed_files_path + syntagmatic_relations_mutual_information_file)):
+
+        f = open(processed_files_path + syntagmatic_relations_mutual_information_file, "r")
+        informations_list = [word.replace("\n","") for word in f.readlines()]
+        f.close()
+
+
+    else:
+
+        sr_mi_target_word_object = Syntagmatic_relation_mutual_information(target_word, individual_words_probabilities, target_word_probabilities_with_others, vocabulary)
+        sr_mi_target_word = sr_mi_target_word_object.word_syntagmatic_relations
+
+        informations_list = []
+
+        for word in sr_mi_target_word.keys():
+
+            informations_list.append([word, sr_mi_target_word[word]])
+
+        informations_list.sort(key=lambda x: x[1], reverse=True)
+
+        f = open(processed_files_path + syntagmatic_relations_mutual_information_file, "w")    
+        f.writelines([f'I({target_word}|{word}) = {information}\n' for word, information in informations_list])
+        f.close()
